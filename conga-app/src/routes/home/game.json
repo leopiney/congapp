@@ -1,0 +1,279 @@
+{
+    "status": 2,
+    "deck": {
+        "cards": [
+            {
+                "suit": 4,
+                "number": 9
+            },
+            {
+                "suit": 1,
+                "number": 4
+            },
+            {
+                "suit": 4,
+                "number": 10
+            },
+            {
+                "suit": 1,
+                "number": 5
+            },
+            {
+                "suit": 3,
+                "number": 8
+            },
+            {
+                "suit": 3,
+                "number": 7
+            },
+            {
+                "suit": 4,
+                "number": 11
+            },
+            {
+                "suit": 4,
+                "number": 6
+            },
+            {
+                "suit": 3,
+                "number": 4
+            },
+            {
+                "suit": 2,
+                "number": 8
+            },
+            {
+                "suit": 4,
+                "number": 5
+            },
+            {
+                "suit": 3,
+                "number": 5
+            },
+            {
+                "suit": 1,
+                "number": 11
+            },
+            {
+                "suit": 4,
+                "number": 8
+            },
+            {
+                "suit": 1,
+                "number": 8
+            },
+            {
+                "suit": 3,
+                "number": 12
+            },
+            {
+                "suit": 1,
+                "number": 2
+            },
+            {
+                "suit": 4,
+                "number": 7
+            },
+            {
+                "suit": 4,
+                "number": 12
+            },
+            {
+                "suit": 3,
+                "number": 2
+            },
+            {
+                "suit": 3,
+                "number": 11
+            },
+            {
+                "suit": 1,
+                "number": 12
+            },
+            {
+                "suit": 2,
+                "number": 9
+            },
+            {
+                "suit": 1,
+                "number": 10
+            },
+            {
+                "suit": 2,
+                "number": 1
+            },
+            {
+                "suit": 2,
+                "number": 12
+            },
+            {
+                "suit": 4,
+                "number": 3
+            },
+            {
+                "suit": 1,
+                "number": 6
+            },
+            {
+                "suit": 3,
+                "number": 6
+            },
+            {
+                "suit": 2,
+                "number": 4
+            },
+            {
+                "suit": 4,
+                "number": 4
+            },
+            {
+                "suit": 1,
+                "number": 1
+            },
+            {
+                "suit": 4,
+                "number": 2
+            },
+            {
+                "suit": 3,
+                "number": 1
+            },
+            {
+                "suit": 2,
+                "number": 11
+            }
+        ]
+    },
+    "discard_deck": {
+        "cards": [
+            {
+                "suit": 2,
+                "number": 2
+            }
+        ]
+    },
+    "players": [
+        {
+            "name": "leo",
+            "hand_score": 49,
+            "hand_candidates": [],
+            "can_finish": false,
+            "score": 49,
+            "hand": [
+                {
+                    "suit": 3,
+                    "number": 3
+                },
+                {
+                    "suit": 2,
+                    "number": 5
+                },
+                {
+                    "suit": 2,
+                    "number": 6
+                },
+                {
+                    "suit": 1,
+                    "number": 9
+                },
+                {
+                    "suit": 3,
+                    "number": 9
+                },
+                {
+                    "suit": 2,
+                    "number": 10
+                },
+                {
+                    "suit": 3,
+                    "number": 10
+                }
+            ],
+            "hand_discarded": [
+                {
+                    "suit": 3,
+                    "number": 3
+                }
+            ],
+            "status": 0,
+            "won_match": false
+        },
+        {
+            "name": "lu",
+            "hand_score": 1,
+            "hand_candidates": [
+                [
+                    {
+                        "suit": 1,
+                        "number": 3
+                    },
+                    {
+                        "suit": 2,
+                        "number": 3
+                    },
+                    {
+                        "suit": 5,
+                        "number": 0
+                    },
+                    {
+                        "suit": 3,
+                        "number": 3
+                    }
+                ],
+                [
+                    {
+                        "suit": 5,
+                        "number": 0
+                    },
+                    {
+                        "suit": 2,
+                        "number": 7
+                    },
+                    {
+                        "suit": 1,
+                        "number": 7
+                    }
+                ]
+            ],
+            "can_finish": false,
+            "score": 1,
+            "hand": [
+                {
+                    "suit": 4,
+                    "number": 1
+                },
+                {
+                    "suit": 1,
+                    "number": 3
+                },
+                {
+                    "suit": 2,
+                    "number": 3
+                },
+                {
+                    "suit": 5,
+                    "number": 0
+                },
+                {
+                    "suit": 2,
+                    "number": 7
+                },
+                {
+                    "suit": 5,
+                    "number": 0
+                },
+                {
+                    "suit": 1,
+                    "number": 7
+                }
+            ],
+            "hand_discarded": [],
+            "status": 0,
+            "won_match": true
+        }
+    ],
+    "match_id": 1,
+    "match_next_player": 1,
+    "match_start_player": 0,
+    "restarts": 0
+}
