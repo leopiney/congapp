@@ -5,6 +5,7 @@ from enum import IntEnum
 from typing import List
 
 from dataclasses_json import dataclass_json
+from tqdm import tqdm
 
 from conga.card import Deck, DiscardDeck
 from conga.player import Player, PlayerStatus, check_cards_values
@@ -20,6 +21,11 @@ class GameStatus(IntEnum):
 @dataclass_json
 @dataclass
 class Game:
+    """Represent a Conga Game state
+
+    This class provides methods to alter the state as the game goes
+    """
+
     status: GameStatus = GameStatus.lobby
     deck: Deck = None
     discard_deck: DiscardDeck = None
@@ -29,11 +35,12 @@ class Game:
     match_start_player: int = 0
 
     def add_player(self, name: str):
-        if self.status == GameStatus.lobby:
-            if all(player.name != name for player in self.players):
-                self.players.append(Player(name=name))
+        """Adds a new player only if the game didn't start yet"""
+        if self.status == GameStatus.lobby and name not in [player.name for player in self.players]:
+            self.players.append(Player(name=name))
 
     def _prepare_deck(self):
+        """Builds a deck and shuffles it. It "adds" a new deck every 4 players"""
         self.deck = Deck()
         self.discard_deck = DiscardDeck()
 
@@ -46,6 +53,13 @@ class Game:
         self.deck.shuffle()
 
     def start_match(self):
+        """Starts the match for the first time, or after a showcase state.
+
+        * Updates the `match_start_player` to the player on the right
+        * Prepares the deck
+        * Sorts and give cards to players
+        * Updates players states
+        """
         if self.status != GameStatus.started:
             self.status = GameStatus.started
 
@@ -66,22 +80,75 @@ class Game:
         for i in range(7):
             for player in self.players:
                 player.hand.append(self.deck.cards.pop())
-                player.update_state()
+
+        self.update_players_state()
 
     def player_turn_pick(self, pick_discard_pile: bool = False):
+        """Current player picks from a deck. Updates players state"""
         player = self.players[self.match_next_player]
 
         assert len(player.hand) == 7, "Can't pick new card"
 
+        #
+        # Pick cards from "the top" of the deck (obviously)
+        #
         new_card = self.discard_deck.cards.pop(0) if pick_discard_pile else self.deck.cards.pop(0)
         player.hand.append(new_card)
 
+    def _reshuffle_deck(self):
+        """If deck runs out of cards, reshufle the discard deck and start again"""
+        self.deck.cards = self.discard_deck.cards
+        self.deck.shuffle()
+        self.discard_deck = DiscardDeck()
+
+    def update_players_state(self):
+        """Updates the state for all players"""
+        for player in self.players:
+            player.update_state()
+
+    def player_turn_throw(self, card_id: int):
+        """Current player discards a card from their hand"""
+        player = self.players[self.match_next_player]
+
+        assert len(player.hand) == 8, "Can't throw card"
+
+        self.discard_deck.cards.insert(0, player.hand.pop(card_id))
+
+        #
+        # Update state and check if player can finish in this turn
+        #
+        player.finish_next_turn = False
+        player.update_state()
+
+        #
+        # If player can finish we want to ask the player if he/she wants to finish the round
+        #
+        if not player.can_finish:
+            self.match_next_player = (self.match_next_player + 1) % len(self.players)
+
+        # Reshuffle deck if it runs out of cards
+        if len(self.deck.cards) == 0:
+            self._reshuffle_deck()
+
     def _finish_match(self):
+        """Finish a round of the game. Game might end if the enough conditions are given"""
         self.status = GameStatus.showcase
 
         winning_player = self.players[self.match_next_player]
         winning_player.won_match = True
 
+        #
+        # Super complicated way of detecting if players can insert their cards in another player
+        # game.
+        #
+        # TODO: think how this should work for more than 15 minutes
+        #
+        t = tqdm()
+
+        #
+        # Iterate through players in the expected right direction, starting from the player that
+        # started the round
+        #
         for player_a in (
             self.players[self.match_next_player :] + self.players[: self.match_next_player]
         ):
@@ -91,9 +158,8 @@ class Game:
                 if player_a == player_b:
                     continue
 
-                updated_candidates = []
-                for candidate in player_a.hand_candidates:
-                    updated_candidate = candidate
+                for i, candidate in enumerate(player_a.hand_candidates):
+                    # Check what player_b' cards can be used to discard points from his/her hand
                     cards_to_discard = [
                         card
                         for card in player_b.hand
@@ -102,22 +168,45 @@ class Game:
                     ]
 
                     for card in cards_to_discard:
+                        t.set_description(
+                            f"For {player_a.name}'s game #{i}, looking {player_b.name}'s "
+                            "cards to discard"
+                        )
+                        t.update()
+
+                        #
+                        # If we add a card to a game and the resulted score is 0 with no new game
+                        # then we can discard that card
+                        #
                         disc_candidates, candidate_score = check_cards_values(candidate + [card])
                         if candidate_score == 0 and len(disc_candidates) == 1:
-                            # this card can be discarded
+                            #
+                            # Add this card to the discarded cards of the player
+                            # (can't be discarded twice)
+                            #
                             player_b.hand_discarded.append(card)
-                            updated_candidate.append(card)
 
-                    updated_candidates.append(updated_candidate)
+                            #
+                            # Also, update the original candidate game. For example, in a flush game
+                            # the discarded cards of a player affect how the other players
+                            # can discard cards
+                            #
+                            candidate.append(card)
 
-                player_a.hand_candidates = updated_candidates
+        t.close()
 
+        #
+        # Reduce score for all the cards discarded
+        #
         for player in self.players:
             for card in player.hand_discarded:
                 player.hand_score -= card.number
 
+        #
+        # Update players scores based on hand values. Also, calculate maximum score if it happens
+        # that players can rejoin the game
+        #
         max_score = 0
-
         for player in self.players:
             if player == winning_player and player.hand_score == 0:
                 player.hand_score = -10
@@ -131,12 +220,9 @@ class Game:
             else:
                 max_score = max(max_score, player.score)
 
-        for player in self.players:
-            if player.status == PlayerStatus.lost and player.restarts < 2:
-                player.status = PlayerStatus.playing
-                player.score = max_score
-                player.restarts += 1
-
+        #
+        # Check if game finished: all players lost except the one who won (lol)
+        #
         game_finished = all(
             player.status == PlayerStatus.lost
             for ix, player in enumerate(self.players)
@@ -145,27 +231,18 @@ class Game:
         if game_finished:
             self.status = GameStatus.finished
 
-    def _reshufle_deck(self):
-        self.deck.cards = self.discard_deck.cards
-        self.deck.shuffle()
-        self.discard_deck = DiscardDeck()
+        #
+        # Players might rejoin game if game didn't finish
+        #
+        if not game_finished:
+            for player in self.players:
+                if player.status == PlayerStatus.lost and player.restarts < 2:
+                    player.status = PlayerStatus.playing
+                    player.score = max_score
+                    player.restarts += 1
 
-    def player_turn_throw(self, card_id: int):
-        player = self.players[self.match_next_player]
-
-        assert len(player.hand) == 8, "Can't throw card"
-
-        self.discard_deck.cards.insert(0, player.hand.pop(card_id))
-        player.finish_next_turn = False
-        player.update_state()
-
-        if not player.can_finish:
-            self.match_next_player = (self.match_next_player + 1) % len(self.players)
-
-        if len(self.deck.cards) == 0:
-            self._reshufle_deck()
-
-    def player_finish_attempt(self, player_finishes):
+    def player_finish_attempt(self, player_finishes: bool):
+        """Player can finish, but he/she might not want to do that"""
         if self.status != GameStatus.started:
             return
 
@@ -175,31 +252,3 @@ class Game:
             player = self.players[self.match_next_player]
             player.finish_next_turn = True
             self.match_next_player = (self.match_next_player + 1) % len(self.players)
-
-        if len(self.deck.cards) == 0:
-            self._reshufle_deck()
-
-
-if __name__ == "__main__":
-    game = Game()
-    game.add_player("Leo")
-    game.add_player("Lu")
-
-    game.start_match()
-
-    game.player_turn_pick()
-    game.player_turn_throw(2)
-
-    game.player_turn_pick()
-    game.player_turn_throw(4)
-
-    # print(len(game.deck.cards))
-    # print(len(game.discard_deck.cards))
-    # print("Player 0")
-    # pprint.pprint(game.players[0].hand)
-    # pprint.pprint(game.players[0].hand_candidates)
-    # pprint.pprint(game.players[0].hand_score)
-    # print("Player 1")
-    # pprint.pprint(game.players[1].hand)
-    # pprint.pprint(game.players[1].hand_candidates)
-    # pprint.pprint(game.players[1].hand_score)

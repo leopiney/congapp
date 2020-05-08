@@ -33,6 +33,7 @@ def _check_flush_joker_count(comb: List[Card]) -> bool:
 
 
 def _check_flush(cards):
+    """Check for possible flush candidates within a hand of cards"""
     suit_sorted_hand = sorted(cards, key=lambda card: (card.suit, card.number))
     candidate_hands = []
 
@@ -56,7 +57,8 @@ def _check_flush(cards):
     return candidate_hands
 
 
-def _check_same_of_a_kind(cards):
+def _check_same_of_a_kind(cards: List[Card]) -> List[List[Card]]:
+    """Check for possible same-of-a-kind candidates within a hand of cards"""
     counter = Counter([card.number for card in cards])
     candidate_hands = []
     joker_count = len([card for card in cards if card.suit == Joker.joker])
@@ -69,13 +71,29 @@ def _check_same_of_a_kind(cards):
 
             for i in range(3, count + joker_count + 1):
                 candidate_hands.extend(
-                    [list(comb) for comb in itertools.permutations(hand_cards, i)]
+                    [list(comb) for comb in itertools.combinations(hand_cards, i)]
                 )
+
+    #
+    # Filter games that have more jokers than cards
+    #
+    candidate_hands = [
+        cand
+        for cand in candidate_hands
+        if len([card for card in cand if card.suit == Joker.joker]) < len(cand) / 2
+    ]
 
     return candidate_hands
 
 
-def check_cards_values(cards):
+def check_cards_values(cards: List[Card]) -> Tuple[List[List[Card]], int]:
+    """Giving a bunch of cards, it generates the best card candidates to get the minimum
+    possible score
+
+    Returns
+    -------
+    A tuple of candidate games and the best possible score
+    """
     better_candidates = []
     better_hand_score = sum([card.number for card in cards])
 
@@ -92,7 +110,7 @@ def check_cards_values(cards):
             better_candidates = [cand]
             better_hand_score = current_score
 
-    for cand_a, cand_b in itertools.combinations(candidates, 2):
+    for cand_a, cand_b in list(itertools.combinations(candidates, 2)):
         current_hand = cards.copy()
 
         for card in cand_a:
@@ -110,7 +128,7 @@ def check_cards_values(cards):
             better_candidates = [cand_a, cand_b]
             better_hand_score = current_score
 
-    return list(better_candidates), better_hand_score
+    return better_candidates, better_hand_score
 
 
 class PlayerStatus(IntEnum):
@@ -122,6 +140,12 @@ class PlayerStatus(IntEnum):
 @dataclass_json
 @dataclass
 class Player:
+    """A player playing a Conga game
+
+    Players can have their hand cards assigned by the Game class. To update the current round state
+    for a player you can use the `update_state` method.
+    """
+
     name: str
     hand_score: int = 0
     hand_candidates: List[List[Card]] = field(default_factory=list)
@@ -138,16 +162,28 @@ class Player:
         return check_cards_values(self.hand)
 
     def sort_cards(self):
+        """Sorts the hand cards a a regular person would do
+        
+        Note: Based on an extensive research interview of 4 people
+        """
         sorted_hand = []
-
         for cand in sorted(self.hand_candidates, key=lambda cand: len(cand)):
             sorted_hand.extend(cand)
 
-        project_cards = [card for card in self.hand if card not in sorted_hand]
+        # For the rest of the cards, check the ones that are not in projects and sort them
+        cards_count = dict(Counter(self.hand))
+        project_cards = []
+
+        for card, count in cards_count.items():
+            for i in range(1 if card in sorted_hand else 0, count):
+                project_cards.append(card)
+
         project_cards.sort(key=lambda card: (card.number, card.suit))
 
         self.hand = project_cards + sorted_hand
 
     def update_state(self):
+        """Looks for game candidates in the player's hand and checks if player can finish the round
+        """
         self.hand_candidates, self.hand_score = self._check_hand_values()
         self.can_finish = self.hand_score <= 5 and self.score + self.hand_score <= 120

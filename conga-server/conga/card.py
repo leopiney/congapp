@@ -23,6 +23,9 @@ class Card:
     suit: Union[Suit, Joker]
     number: int
 
+    def __hash__(self):
+        return self.suit * self.number
+
     def __eq__(self, other):
         return self.suit == other.suit and self.number == other.number
 

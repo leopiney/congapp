@@ -34,15 +34,14 @@ async def websocket_endpoint(websocket: WebSocket):
 
     sockets.append(websocket)
 
-    print(f"Added new socket. Total: {len(sockets)}")
+    print(f"Added new socket connection. Total: {len(sockets)}")
 
     while True:
         try:
             data = await websocket.receive_json()
             print(f"Received message {data}")
 
-            for player in game.players:
-                player.update_state()
+            game.update_players_state()
 
             if "action" in data and data["action"] in valid_actions:
                 action = getattr(game, data["action"])

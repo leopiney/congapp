@@ -8,6 +8,7 @@ authors = ["Leonardo Piñeyro <leopiney@gmail.com>"]
 python = "^3.7"
 fastapi = "^0.54.1"
 dataclasses-json = "^0.4.2"
+tqdm = "^4.46.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
